@@ -1,4 +1,5 @@
 #Om Namo Venketesaya
+import numpy as np
 
 class Velocity:
     def __init__(self,lookback = 25):
@@ -32,3 +33,22 @@ class Accelearation:
         self.prev_velocity = velocity
 
         return accelearation
+
+
+class Regression:
+    def __init__(self,lookback = 20):
+        self.lookback = lookback
+
+    def calc(self,prices):
+
+        if len(prices) < self.lookback:
+            return None
+        
+        y = np.array(list(prices)[-self.lookback:])
+        x = np.arange(self.lookback)
+
+        m,c = np.polyfit(x,y,1)
+        
+        return m
+        
+        
