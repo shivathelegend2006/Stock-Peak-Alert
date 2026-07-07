@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
-from detector import Velocity, Accelearation, Regression
+from detector import Velocity, Accelearation, Regression, EventDetector
 
 window_size = 375 #5minutiions
 
@@ -20,6 +20,7 @@ prices = deque(maxlen=window_size)
 velocity_detector = Velocity()
 acceleration_detector = Accelearation()
 linreg = Regression()
+event = EventDetector(trigger=3.5) 
 
 
 fig, ax = plt.subplots(figsize=(14,6))
@@ -107,11 +108,20 @@ for _, row in df.iterrows():
 
 
     score = abs(velocity or 0) + abs(acceleration or 0) + abs(gradient or 0)
-    print(score)
-    if score > 3:
+    
+    state = event.update(score)
+    
+    if state == "START":
+        accel_x.append(len(prices) - 1)
+        accel_y.append(price)
+        n+=1
+    
+    if state == "END":
         alert_x.append(len(prices) - 1)
         alert_y.append(price)
         c+=1
+
+    
 
 
 
@@ -121,8 +131,8 @@ vvals = sorted(vvals)
 line.set_xdata(range(len(prices)))
 line.set_ydata(prices)
 
-ax.scatter(alert_x, alert_y, color="red", s=50)
-
+ax.scatter(alert_x, alert_y, color="red", s=200)
+ax.scatter(accel_x,accel_y,color = "green", s = 200)
 ax.relim()
 ax.autoscale_view()
 

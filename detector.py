@@ -52,3 +52,33 @@ class Regression:
         return m
         
         
+class EventDetector:
+    def __init__(self,trigger = 3, end_after = 5):
+        self.trigger = trigger
+        self.end_after = end_after
+
+        self.active = False
+        self.idel_ticks = 0
+
+    def update(self,score):
+        if not self.active: #Idel
+            if score >= self.trigger: #event started
+                self.active = True        
+                self.idel_ticks = 0
+
+                return "START"
+            
+            return None
+        
+        if score >= self.trigger: #ongoing but start of new
+            self.idel_ticks = 0
+            return "ONGOING"
+        
+        self.idel_ticks += 1
+        if self.idel_ticks >= self.end_after: #ongoing for more than 5 but not more reponse
+            self.active = False
+            self.idel_ticks = 0
+
+            return "END"
+        
+        return "ONGOING" #siply ongoing
