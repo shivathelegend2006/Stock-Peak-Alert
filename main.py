@@ -10,17 +10,17 @@ from detector import Velocity, Accelearation, Regression, EventDetector
 
 window_size = 375 #5minutiions
 
-df = pd.read_csv("nifty_last_7_days.csv")
-df["date"] = pd.to_datetime(df["date"],dayfirst=True)
+df = pd.read_csv("nifty_last_7_days.csv") #reads csv
+df["date"] = pd.to_datetime(df["date"],dayfirst=True) #converts each value form date colouns to objects of format dd / mm / yyyy
 df = df[
     df["date"].dt.date == pd.Timestamp("2025-07-21").date()
-]
+] #filters to keep only required date
 
 prices = deque(maxlen=window_size)
 velocity_detector = Velocity()
 acceleration_detector = Accelearation()
 linreg = Regression()
-event = EventDetector(trigger=3.5) 
+event = EventDetector(trigger=3) 
 
 
 fig, ax = plt.subplots(figsize=(14,6))
@@ -47,9 +47,13 @@ accel_y = []
 reg_x = []
 reg_y = []
 
+notify_x = []
+notify_y = []
+
+tick = 0
 for _, row in df.iterrows():
     price = row["close"]
-
+    tick += 1
 
     prices.append(price)
 
@@ -70,69 +74,28 @@ for _, row in df.iterrows():
     ax.relim()
     ax.autoscale_view()
 
-
-
-    # if velocity is not None and (velocity < -2 or velocity > 5):
-    #     alert_x.append(len(prices) - 1)
-    #     alert_y.append(price)
-
-    #     print(
-    #         f"{row['date']} | "
-    #         f"Price: {price:.2f} | "
-    #         f"Velocity: {velocity:.2f}"
-    #     )
-    #     c += 1
-
-
-    # if acceleration is not None and abs(acceleration) > 1:
-
-    #     accel_x.append(len(prices)-1)
-    #     accel_y.append(price)
-
-    #     print(
-    #         f"{row['date']} | "
-    #         f"Acceleration: {acceleration:.2f}"
-    #     )
-    #     n += 1
-
-    # if gradient is not None and abs(gradient) > 2.5:
-    #     reg_x.append(len(prices)-1)
-    #     reg_y.append(price)
-
-    #     print(
-    #         f"{row['date']} | "
-    #         f"Gradient: {gradient:.2f}"
-    #     )   
-    
-    #     m+=1
-
-
     score = abs(velocity or 0) + abs(acceleration or 0) + abs(gradient or 0)
     
-    state = event.update(score)
-    
-    if state == "START":
-        accel_x.append(len(prices) - 1)
-        accel_y.append(price)
-        n+=1
-    
-    if state == "END":
-        alert_x.append(len(prices) - 1)
-        alert_y.append(price)
+    notify = event.update(score)
+    if notify:
+        print(score, tick)
+        notify_x.append(len(prices)-1)
+        notify_y.append(price)
         c+=1
 
+        
     
 
 
 
-print(c,n,m )
+print(c)
 vvals = sorted(vvals)
 
 line.set_xdata(range(len(prices)))
 line.set_ydata(prices)
 
-ax.scatter(alert_x, alert_y, color="red", s=200)
-ax.scatter(accel_x,accel_y,color = "green", s = 200)
+# ax.scatter(alert_x, alert_y, color="red", s=200)
+ax.scatter(notify_x,notify_y,color = "green", s = 200)
 ax.relim()
 ax.autoscale_view()
 
