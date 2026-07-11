@@ -10,10 +10,10 @@ from detector import Velocity, Accelearation, Regression, EventDetector
 
 window_size = 375 #5minutiions
 
-df = pd.read_csv("nifty_last_7_days.csv") #reads csv
-df["date"] = pd.to_datetime(df["date"],dayfirst=True) #converts each value form date colouns to objects of format dd / mm / yyyy
+df = pd.read_csv("nifty_june_2025.csv") #reads csv
+df["date"] = pd.to_datetime(df["date"],format="mixed") #converts each value form date colouns to objects of format dd / mm / yyyy
 df = df[
-    df["date"].dt.date == pd.Timestamp("2025-07-21").date()
+    df["date"].dt.date == pd.Timestamp("2025-06-02").date()
 ] #filters to keep only required date
 
 prices = deque(maxlen=window_size)
@@ -22,6 +22,7 @@ acceleration_detector = Accelearation()
 linreg = Regression()
 event = EventDetector(trigger=3) 
 
+tickss =[23, 112, 172, 263, 352]
 
 fig, ax = plt.subplots(figsize=(14,6))
 
@@ -82,7 +83,9 @@ for _, row in df.iterrows():
         notify_x.append(len(prices)-1)
         notify_y.append(price)
         c+=1
-
+    if tick in tickss:
+        alert_x.append(len(prices)-1)
+        alert_y.append(price)
         
     
 
@@ -94,7 +97,7 @@ vvals = sorted(vvals)
 line.set_xdata(range(len(prices)))
 line.set_ydata(prices)
 
-# ax.scatter(alert_x, alert_y, color="red", s=200)
+ax.scatter(alert_x, alert_y, color="red", s=200)
 ax.scatter(notify_x,notify_y,color = "green", s = 200)
 ax.relim()
 ax.autoscale_view()

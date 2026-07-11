@@ -6,13 +6,13 @@ import pandas as pd
 from detector import Velocity, Accelearation, Regression, EventDetector
 
 window_size = 375
-tolerance = 5
-expectedEvents = 6
+tolerance = 3
+expectedTicks = [17,34,150,280,340]
 
 df = pd.read_csv("nifty_last_7_days.csv") #reads csv
 df["date"] = pd.to_datetime(df["date"],dayfirst=True) #converts each value form date colouns to objects of format dd / mm / yyyy
 df = df[
-    df["date"].dt.date == pd.Timestamp("2025-07-21").date()
+    df["date"].dt.date == pd.Timestamp("2025-07-23").date()
 ] #filters to keep only required date
 
 velocity_windows = [15, 20, 25, 30]
@@ -69,26 +69,32 @@ for vel_win, reg_win, trig, notify, decay in product(
             events += 1
             event_ticks.append(tick)
 
-    difference = abs(events - expectedEvents)
+    total_error = 0
 
-    if difference <= tolerance:
+    for expected, detected in zip(expectedTicks, event_ticks):
+        total_error += abs(expected - detected)
 
-        results.append({
+  
+    total_error += abs(len(event_ticks) - len(expectedTicks)) * 100
 
-            "difference": difference,
-            "events": events,
-            "ticks": event_ticks,
+  
 
-            "velocity_window": vel_win,
-            "regression_window": reg_win,
+    results.append({
 
-            "trigger": trig,
-            "notify": notify,
-            "decay": decay
+        "error": total_error,
+        "events": events,
+        "ticks": event_ticks,
 
-        })
+        "velocity_window": vel_win,
+        "regression_window": reg_win,
 
-results.sort(key=lambda x: x['difference'])
+        "trigger": trig,
+        "notify": notify,
+        "decay": decay
+
+    })
+
+results.sort(key=lambda x: x['error'])
 
 if len(results) == 0:
 
@@ -96,6 +102,7 @@ if len(results) == 0:
 
 else:
 
-    for r in results[:5]:
+    for rank, r in enumerate(results[:5], start=1):
 
+        print(f"\nRank {rank}")
         print(r)
