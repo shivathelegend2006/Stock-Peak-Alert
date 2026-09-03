@@ -1,8 +1,6 @@
 #Om Namo Venketesaya
 import requests
 
-
-
 headers = {
     "User-Agent": "Mozilla/5.0"
 }
