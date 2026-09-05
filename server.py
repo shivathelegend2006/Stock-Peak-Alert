@@ -5,11 +5,10 @@ import json
 import pandas as pd
 from datetime import datetime
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 
-from detector import EventDetector
-
+from detector import EventDetector, Velocity
 
 @asynccontextmanager 
 async def lifespan(app: FastAPI):
@@ -21,40 +20,17 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan) #the actual server
-detector = EventDetector()
-connected_clients = [] #list of connected clinets
 
-temp_html = """
-<!DOCTYPE html>
-<html>
-    <head><title>Nifty Live</title></head>
-    <body>
-        <h1>Nifty Live Event Stream</h1>
-        <ul id="messages"></ul>
-        <script>
-            var ws = new WebSocket("ws://localhost:8000/ws");
-            ws.onmessage = function(event) {
-                var messages = document.getElementById('messages');
-                var message = document.createElement('li');
-                var data = JSON.parse(event.data);
-                // We add visual flair if an alert is triggered
-                if (data.alert) {
-                    message.innerHTML = `<b>[${data.time}] 🚨 NIFTY: ${data.price} | Conf: ${data.confidence} | ALERT!</b>`;
-                    message.style.color = "red";
-                } else {
-                    message.innerText = `[${data.time}] NIFTY: ${data.price} | Conf: ${data.confidence}`;
-                }
-                messages.appendChild(message);
-            };
-        </script>
-    </body>
-</html>
-"""
+
+detector = EventDetector()
+velocity_engine = Velocity(lookback=15) # Looks back 15 ticks to calculate speed
+price_history = [] # Stores history for velocity math
+connected_clients = [] #list of connected clinets
 
 
 @app.get("/") #the website sends get request so when the client opens the default url
 async def get_homepage():
-    return HTMLResponse(temp_html) # return the html page
+    return FileResponse("index.html") # return the html page
 
 @app.websocket("/ws") #immediatly after the page loads the connecgttio is formed so run this function
 async def websocket_endpoint(websocket: WebSocket):
@@ -67,17 +43,24 @@ async def websocket_endpoint(websocket: WebSocket):
         connected_clients.remove(websocket)
 
 async def replay_market():
-    df = pd.read_csv("nifty_june_2025.csv")
+    df = pd.read_csv("nifty_last_7_days.csv")
     
     # Loop through the CSV row by row
     for index, row in df.iterrows():
         try:
-            # Extract timestamp and close price
+
             raw_time = str(row['date'])
             current_price = float(row['close'])
             
-            # Feed the algorithm
-            alert_triggered = detector.update(current_price)
+            price_history.append(current_price)
+            
+            current_velocity = velocity_engine.calc(price_history)
+            
+            # 3. Feed the velocity magnitude (absolute value) to the detector
+            if current_velocity is not None:
+                alert_triggered = detector.update(abs(current_velocity))
+            else:
+                alert_triggered = False
 
             payload = {
                 "time" : raw_time.split(" ")[1],
@@ -85,7 +68,9 @@ async def replay_market():
                 "confidence" : round(detector.confidence, 2),
                 "alert" : alert_triggered
             } #the dict that will be sent accross as JSON
-
+            if current_velocity is not None:
+                print(f"Vel: {abs(current_velocity):.2f} | Trigger need: >??? | Conf: {detector.confidence:.2f} | Notify need: >???")
+            
             json_payload = json.dumps(payload)
 
             for client in connected_clients:
@@ -94,5 +79,5 @@ async def replay_market():
         except Exception as e:
             print(f"Error processing row: {e}")
             
-        # Wait 1 second between ticks instead of 1 minute!
-        await asyncio.sleep(1)
+        # Wait 0.1 second between ticks instead of 1 minute!
+        await asyncio.sleep(0.1)

@@ -50,32 +50,35 @@ class Regression:
         m,c = np.polyfit(x,y,1)
         
         return m
-        
-        
+
+
 class EventDetector:
-    def __init__(self,trigger = 3, notify = 8, decay = 0.85):
+    def __init__(self, trigger=0.5, notify=2.0, decay=0.85, cooldown_period=60):
         self.trigger = trigger
         self.notify = notify
         self.decay = decay
-
+        
         self.confidence = 0
-        self.sent =   False
+        self.cooldown_period = cooldown_period
+        self.ticks_since_last_alert = 9999 
 
-    def update(self,score):
+    def update(self, score):
+
+        self.ticks_since_last_alert += 1
+
         if score > self.trigger:
             self.confidence += (score - self.trigger)
-
         else:
             self.confidence *= self.decay
 
         if self.confidence < 0.05:
             self.confidence = 0
-            self.sent = False
 
         notify = False
     
-        if (not self.sent) and self.confidence >= self.notify:
+        if self.confidence >= self.notify and self.ticks_since_last_alert >= self.cooldown_period:
             notify = True
-            self.sent = True
+            self.confidence = 0 
+            self.ticks_since_last_alert = 0 
 
         return notify

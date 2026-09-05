@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Market Dashboard</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        /* Premium Brokerage Aesthetic */
+        body {
+            background-color: #f0f2f5;
+            color: #1a1a1a;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1100px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* Glass-like polished cards */
+        .card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0,0,0,0.02);
+        }
+
+        /* Live Header Area */
+        .header-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .ticker-label {
+            font-size: 1.1rem;
+            color: #5e6a75;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .price-display {
+            font-size: 4rem;
+            font-weight: 700;
+            letter-spacing: -2px;
+            line-height: 1;
+            transition: color 0.3s ease;
+        }
+
+        /* Chart Container */
+        .chart-container {
+            height: 450px;
+            width: 100%;
+            position: relative;
+        }
+
+        /* Anomaly Logs */
+        .logs-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #5e6a75;
+            margin: 0 0 16px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .log-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 200px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .log-item {
+            display: flex;
+            justify-content: space-between;
+            background-color: #fff0f0;
+            border-left: 4px solid #ff3b30;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            color: #333;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .log-item span.bold {
+            font-weight: 700;
+            color: #ff3b30;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <div class="card header-panel">
+            <div>
+                <div class="ticker-label">NIFTY 50 </div>
+                <div class="price-display" id="livePrice">₹ --.--</div>
+            </div>
+            <div style="text-align: right; color: #5e6a75; font-size: 0.9rem;">
+                <div id="status">CONNECTING...</div>
+                <div id="basePriceLabel">Base: --.--</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="chart-container">
+                <canvas id="niftyChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card" id="logsCard" style="display: none;">
+            <h3 class="logs-title">Critical Anomalies</h3>
+            <ul class="log-list" id="logList"></ul>
+        </div>
+
+    </div>
+
+    <script>
+        // 1. Chart Configuration
+        const ctx = document.getElementById('niftyChart').getContext('2d');
+        
+        // Colors for Up (Green) and Down (Red)
+        const colorUp = '#00c805'; 
+        const colorDown = '#ff3b30';
+
+        const niftyChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    data: [],
+                    borderWidth: 2.5,
+                    fill: true, // Enables the trailing area under the line
+                    pointBackgroundColor: [], // Individual dot colors
+                    pointBorderColor: [], // Individual dot borders
+                    pointRadius: [], // Size of dots
+                    pointBorderWidth: [],
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 0 },
+                plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                interaction: { intersect: false },
+                scales: {
+                    x: { grid: { display: false }, ticks: { maxTicksLimit: 10, color: '#999' } },
+                    y: { position: 'right', grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#999' } }
+                }
+            }
+        });
+
+        // 2. State Management
+        let basePrice = null;
+        const ws = new WebSocket("ws://localhost:8000/ws");
+        const logList = document.getElementById('logList');
+        const logsCard = document.getElementById('logsCard');
+
+        ws.onopen = () => {
+            document.getElementById('status').innerText = "LIVE MARKET SYNCED";
+            document.getElementById('status').style.color = colorUp;
+        };
+
+        // 3. Process Incoming Data
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+
+            // Set the opening/base price on the very first tick
+            if (basePrice === null) {
+                basePrice = data.price;
+                document.getElementById('basePriceLabel').innerText = `Base: ₹${basePrice.toFixed(2)}`;
+            }
+
+            // Determine if we are Green or Red
+            const isUp = data.price >= basePrice;
+            const activeColor = isUp ? colorUp : colorDown;
+
+            // Update Header text color
+            document.getElementById('livePrice').innerText = `₹ ${data.price.toFixed(2)}`;
+            document.getElementById('livePrice').style.color = activeColor;
+
+            // Update Chart Line Color
+            niftyChart.data.datasets[0].borderColor = activeColor;
+
+            // Create the trailing gradient under the line
+            let gradient = ctx.createLinearGradient(0, 0, 0, 450);
+            gradient.addColorStop(0, isUp ? 'rgba(0, 200, 5, 0.15)' : 'rgba(255, 59, 48, 0.15)');
+            gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            niftyChart.data.datasets[0].backgroundColor = gradient;
+
+            // Add Data to Chart
+            niftyChart.data.labels.push(data.time);
+            niftyChart.data.datasets[0].data.push(data.price);
+
+            // MARK ANOMALIES ON THE GRAPH
+            if (data.alert) {
+                // Large bold black dot with a white halo so it stands out against both green and red lines
+                niftyChart.data.datasets[0].pointBackgroundColor.push('#1a1a1a'); 
+                niftyChart.data.datasets[0].pointBorderColor.push('#ffffff');
+                niftyChart.data.datasets[0].pointRadius.push(6);
+                niftyChart.data.datasets[0].pointBorderWidth.push(3);
+                
+                // ONLY log if it's an anomaly
+                logsCard.style.display = 'block'; // Show the logs panel if hidden
+                const newLog = document.createElement('li');
+                newLog.className = 'log-item';
+                newLog.innerHTML = `
+                    <span>[${data.time}] <span class="bold">ANOMALY TRIGGERED</span></span>
+                    <span style="font-family: monospace; font-weight: 600;">₹${data.price.toFixed(2)} (Conf: ${data.confidence.toFixed(2)})</span>
+                `;
+                logList.insertBefore(newLog, logList.firstChild);
+                
+            } else {
+                // Invisible dot for normal ticks
+                niftyChart.data.datasets[0].pointBackgroundColor.push('transparent');
+                niftyChart.data.datasets[0].pointBorderColor.push('transparent');
+                niftyChart.data.datasets[0].pointRadius.push(0);
+                niftyChart.data.datasets[0].pointBorderWidth.push(0);
+            }
+
+            niftyChart.update();
+        };
+    </script>
+</body>
