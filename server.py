@@ -81,3 +81,6 @@ async def replay_market():
             
         # Wait 0.1 second between ticks instead of 1 minute!
         await asyncio.sleep(0.1)
+
+#To start the server
+#uvicorn server:app --reload

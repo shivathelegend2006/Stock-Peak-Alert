@@ -1,251 +1,472 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Market Dashboard</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Stock Peak Alert - Live</title>
+    <!-- Typography Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- Tailwind Configuration -->
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#4cd7f6",
+                        "surface-tint": "#5b5e68",
+                        "error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#4edea3",
+                        "on-error": "#ffffff",
+                        "on-surface-variant": "#45474b",
+                        "outline-variant": "#c6c6cb",
+                        "surface-dim": "#cbdbf5",
+                        "primary-fixed-dim": "#c3c6d2",
+                        "on-secondary": "#ffffff",
+                        "primary": "#000000",
+                        "surface-container": "#e5eeff",
+                        "inverse-primary": "#c3c6d2",
+                        "on-secondary-container": "#00714d",
+                        "on-tertiary-fixed": "#001f26",
+                        "background": "#ffffff",
+                        "on-tertiary-fixed-variant": "#004e5c",
+                        "primary-container": "#181c24",
+                        "on-surface": "#0b1c30",
+                        "surface-variant": "#d3e4fe",
+                        "tertiary": "#000000",
+                        "on-tertiary": "#ffffff",
+                        "inverse-surface": "#213145",
+                        "secondary-container": "#6cf8bb",
+                        "on-secondary-fixed-variant": "#005236",
+                        "surface-container-high": "#dce9ff",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed": "#acedff",
+                        "on-background": "#0b1c30",
+                        "surface": "#ffffff",
+                        "on-secondary-fixed": "#002113",
+                        "primary-fixed": "#dfe2ee",
+                        "surface-container-low": "#f8f9ff",
+                        "on-error-container": "#93000a",
+                        "on-primary-container": "#80848e",
+                        "inverse-on-surface": "#eaf1ff",
+                        "tertiary-container": "#001f26",
+                        "secondary-fixed": "#6ffbbe",
+                        "surface-container-highest": "#d3e4fe",
+                        "surface-bright": "#ffffff",
+                        "outline": "#76777c",
+                        "on-tertiary-container": "#0090a9",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary": "#006c49",
+                        "on-primary-fixed-variant": "#434750",
+                        "on-primary-fixed": "#181c24",
+                        "error": "#ba1a1a"
+                    },
+                    "fontFamily": {
+                        "sans": ["Inter", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"]
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        /* Premium Brokerage Aesthetic */
-        body {
-            background-color: #f0f2f5;
-            color: #1a1a1a;
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            padding: 40px 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 1100px;
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-        }
-
-        /* Glass-like polished cards */
-        .card {
-            background: #ffffff;
-            border-radius: 16px;
-            padding: 24px;
-            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
-            border: 1px solid rgba(0,0,0,0.02);
-        }
-
-        /* Live Header Area */
-        .header-panel {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-        }
-
-        .ticker-label {
-            font-size: 1.1rem;
-            color: #5e6a75;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 8px;
-        }
-
-        .price-display {
-            font-size: 4rem;
-            font-weight: 700;
-            letter-spacing: -2px;
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
             line-height: 1;
-            transition: color 0.3s ease;
         }
-
-        /* Chart Container */
-        .chart-container {
-            height: 450px;
-            width: 100%;
-            position: relative;
-        }
-
-        /* Anomaly Logs */
-        .logs-title {
-            font-size: 1rem;
-            font-weight: 600;
-            color: #5e6a75;
-            margin: 0 0 16px 0;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .log-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            max-height: 200px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .log-item {
-            display: flex;
-            justify-content: space-between;
-            background-color: #fff0f0;
-            border-left: 4px solid #ff3b30;
-            padding: 12px 16px;
-            border-radius: 6px;
-            font-size: 0.95rem;
-            color: #333;
-            animation: slideIn 0.3s ease-out;
-        }
-
-        .log-item span.bold {
-            font-weight: 700;
-            color: #ff3b30;
-        }
-
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
+        .neon-line {
+            filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.75)) drop-shadow(0 0 16px rgba(16, 185, 129, 0.35));
         }
     </style>
 </head>
-<body>
+<body class="bg-[#ffffff] text-on-surface min-h-screen antialiased flex flex-col font-sans selection:bg-surface-variant">
 
-    <div class="container">
-        
-        <div class="card header-panel">
-            <div>
-                <div class="ticker-label">NIFTY 50 </div>
-                <div class="price-display" id="livePrice">₹ --.--</div>
+<!-- TOP APP BAR -->
+<header class="bg-white border-b border-outline-variant sticky top-0 z-40">
+    <div class="flex items-center w-full px-4 sm:px-6 md:px-8 max-w-[1600px] mx-auto h-14">
+        <div class="flex items-center space-x-2.5">
+            <span class="material-symbols-outlined text-primary text-xl" data-icon="insights">insights</span>
+            <span class="text-lg sm:text-xl font-semibold text-on-surface tracking-tight">Stock Peak Alert</span>
+        </div>
+    </div>
+</header>
+
+<!-- MAIN VIEWPORT CONTAINER -->
+<main class="flex-1 max-w-[1600px] w-full mx-auto px-3 sm:px-6 md:px-8 py-4 sm:py-6 flex flex-col space-y-5 sm:space-y-6">
+    <!-- THE DARK MARKET GRAPH CARD -->
+    <div class="bg-[#0B0F17] rounded-xl border border-[rgba(255,255,255,0.08)] shadow-2xl overflow-hidden flex flex-col relative select-none">
+        <!-- Chart Wrapper with Dedicated Left Price Scale Column -->
+        <div class="flex flex-row w-full">
+            <!-- Dedicated Left-Hand Price Scale Column (DYNAMIC NOW) -->
+            <div id="priceScaleColumn" class="w-16 sm:w-20 md:w-24 shrink-0 bg-[#0B0F17] border-r border-[rgba(255,255,255,0.08)] flex flex-col justify-between pt-3 pb-8 sm:pt-4 sm:pb-9 px-2 sm:px-3 text-[11px] sm:text-xs font-mono text-[#64748B] text-right pointer-events-none select-none z-10">
+                <span>--</span>
+                <span>--</span>
+                <span>--</span>
+                <span>--</span>
+                <span>--</span>
             </div>
-            <div style="text-align: right; color: #5e6a75; font-size: 0.9rem;">
-                <div id="status">CONNECTING...</div>
-                <div id="basePriceLabel">Base: --.--</div>
+            
+            <!-- Interactive Chart Viewport Canvas & SVG -->
+            <div class="relative flex-1 h-64 sm:h-80 md:h-[400px] bg-[#0B0F17] p-0 flex flex-col justify-between cursor-crosshair overflow-hidden touch-none" id="chartViewport">
+                <!-- Interactive Crosshair Guideline -->
+                <div class="absolute top-0 bottom-6 sm:bottom-7 w-[1px] bg-emerald-400/60 pointer-events-none hidden z-20 border-l border-dashed border-emerald-400" id="crosshairLine"></div>
+                
+                <!-- Floating Interactive Tooltip HUD -->
+                <div class="absolute pointer-events-none z-30 hidden transition-transform duration-75 ease-out bg-[#111622]/95 backdrop-blur-md border border-emerald-500/20 rounded-lg shadow-2xl p-2.5 sm:p-3 text-xs min-w-[150px] sm:min-w-[180px]" id="chartTooltip">
+                    <div class="flex items-center justify-between border-b border-white/10 pb-1.5 mb-2 font-sans">
+                        <span class="text-slate-300 font-semibold tabular-nums text-[11px] sm:text-xs" id="tooltipTime">--:--:--</span>
+                        <span class="text-white font-bold text-[11px] sm:text-xs" id="tooltipTicker">NIFTY</span>
+                    </div>
+                    <div class="space-y-1.5 font-mono text-[11px] sm:text-xs">
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400">Price:</span>
+                            <span class="text-white font-semibold" id="tooltipPrice">₹--.--</span>
+                        </div>
+                        <div class="pt-1.5 border-t border-white/10 flex justify-between items-center" id="tooltipAnomalyRow">
+                            <span class="text-slate-400">Status:</span>
+                            <span class="px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-semibold" id="tooltipAnomalyBadge">Nominal</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Live Hover Snag Dot Indicator -->
+                <div class="absolute w-2.5 h-2.5 sm:w-3 sm:h-3 -ml-1.5 -mt-1.5 rounded-full bg-emerald-400 border-2 border-white shadow-[0_0_12px_#10b981] pointer-events-none hidden z-25" id="cursorHoverDot"></div>
+                
+                <!-- SVG Chart Canvas -->
+                <svg class="w-full h-full" id="chartSvg" preserveaspectratio="none" viewbox="0 0 1000 340" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <!-- Neon Emerald Green Area Gradient -->
+                        <lineargradient id="areaGradient" x1="0" x2="0" y1="0" y2="1">
+                            <stop offset="0%" stop-color="#10b981" stop-opacity="0.35"></stop>
+                            <stop offset="50%" stop-color="#10b981" stop-opacity="0.10"></stop>
+                            <stop offset="100%" stop-color="#10b981" stop-opacity="0.00"></stop>
+                        </lineargradient>
+                        <filter height="200%" id="emeraldGlow" width="200%" x="-50%" y="-50%">
+                            <fegaussianblur result="coloredBlur" stddeviation="3"></fegaussianblur>
+                            <femerge>
+                                <femergenode in="coloredBlur"></femergenode>
+                                <femergenode in="SourceGraphic"></femergenode>
+                            </femerge>
+                        </filter>
+                    </defs>
+                    <!-- Horizontal Grid Lines -->
+                    <line stroke="#1E293B" stroke-dasharray="4 4" stroke-width="1" x1="0" x2="1000" y1="50" y2="50"></line>
+                    <line stroke="#1E293B" stroke-dasharray="4 4" stroke-width="1" x1="0" x2="1000" y1="110" y2="110"></line>
+                    <line stroke="#1E293B" stroke-dasharray="4 4" stroke-width="1" x1="0" x2="1000" y1="170" y2="170"></line>
+                    <line stroke="#1E293B" stroke-dasharray="4 4" stroke-width="1" x1="0" x2="1000" y1="230" y2="230"></line>
+                    <line stroke="#1E293B" stroke-width="1" x1="0" x2="1000" y1="290" y2="290"></line>
+                    
+                    <!-- Vertical Grid Lines -->
+                    <line stroke="#1E293B" stroke-dasharray="4 4" stroke-width="1" x1="160" x2="160" y1="20" y2="290"></line>
+                    <line stroke="#1E293B" stroke-dasharray="4 4" stroke-width="1" x1="330" x2="330" y1="20" y2="290"></line>
+                    <line stroke="#1E293B" stroke-dasharray="4 4" stroke-width="1" x1="500" x2="500" y1="20" y2="290"></line>
+                    <line stroke="#1E293B" stroke-dasharray="4 4" stroke-width="1" x1="670" x2="670" y1="20" y2="290"></line>
+                    <line stroke="#1E293B" stroke-dasharray="4 4" stroke-width="1" x1="840" x2="840" y1="20" y2="290"></line>
+                    
+                    <!-- Price Area Fill -->
+                    <path d="" fill="url(#areaGradient)" id="chartAreaPath"></path>
+                    <!-- Crisp Neon Emerald Price Line -->
+                    <path class="neon-line" d="" fill="none" id="chartLinePath" stroke="#10b981" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+                    <!-- Static Peak Anomaly Markers -->
+                    <g id="anomalyMarkersGroup"></g>
+                </svg>
+                
+                <!-- Bottom X-Axis Timestamps -->
+                <div id="xAxisLabels" class="h-6 sm:h-7 flex justify-between items-center px-3 sm:px-6 text-[10px] sm:text-xs font-sans font-semibold tabular-nums text-[#64748B] border-t border-[rgba(255,255,255,0.08)] bg-[#0B0F17]/90 z-10">
+                    <!-- Populated dynamically -->
+                </div>
             </div>
         </div>
-
-        <div class="card">
-            <div class="chart-container">
-                <canvas id="niftyChart"></canvas>
-            </div>
-        </div>
-
-        <div class="card" id="logsCard" style="display: none;">
-            <h3 class="logs-title">Critical Anomalies</h3>
-            <ul class="log-list" id="logList"></ul>
-        </div>
-
     </div>
 
-    <script>
-        // 1. Chart Configuration
-        const ctx = document.getElementById('niftyChart').getContext('2d');
-        
-        // Colors for Up (Green) and Down (Red)
-        const colorUp = '#00c805'; 
-        const colorDown = '#ff3b30';
+    <!-- ANOMALIES DETECTED SECTION -->
+    <div class="bg-white border border-outline-variant rounded-xl overflow-hidden shadow-sm flex flex-col">
+        <div class="px-4 sm:px-5 py-3 sm:py-3.5 border-b border-outline-variant flex items-center justify-between bg-white">
+            <div class="flex items-center space-x-2">
+                <span class="material-symbols-outlined text-primary text-xl" data-icon="radar">radar</span>
+                <h2 class="text-base sm:text-lg font-semibold text-on-surface">Anomalies detected</h2>
+            </div>
+        </div>
+        <div class="overflow-x-auto w-full">
+            <table class="w-full min-w-[540px] text-left border-collapse" id="anomalyTable">
+                <thead>
+                    <tr class="border-b border-outline-variant bg-surface-container-low text-on-surface-variant text-xs font-medium">
+                        <th class="py-2.5 sm:py-3 px-4 sm:px-6 whitespace-nowrap">Time </th>
+                        <th class="py-2.5 sm:py-3 px-4 sm:px-6 whitespace-nowrap">Detection Price</th>
+                        <th class="py-2.5 sm:py-3 px-4 sm:px-6 whitespace-nowrap">Confidence</th>
+                    </tr>
+                </thead>
+                <!-- CLEARED HARDCODED DATA: Ready for WebSocket Injection -->
+                <tbody class="divide-y divide-outline-variant text-xs sm:text-sm" id="anomalyLogBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
 
-        const niftyChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    data: [],
-                    borderWidth: 2.5,
-                    fill: true, // Enables the trailing area under the line
-                    pointBackgroundColor: [], // Individual dot colors
-                    pointBorderColor: [], // Individual dot borders
-                    pointRadius: [], // Size of dots
-                    pointBorderWidth: [],
-                    tension: 0.1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: { duration: 0 },
-                plugins: { legend: { display: false }, tooltip: { enabled: false } },
-                interaction: { intersect: false },
-                scales: {
-                    x: { grid: { display: false }, ticks: { maxTicksLimit: 10, color: '#999' } },
-                    y: { position: 'right', grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#999' } }
-                }
+<script>
+    // --- 1. STATE INITIALIZATION ---
+    let dataset = [];
+    let anomalyTableIndices = [];
+    let minPrice = Infinity;
+    let maxPrice = -Infinity;
+    
+    const svgWidth = 1000;
+    const svgHeight = 290;
+    const paddingX = 40;
+    const MAX_DATA_POINTS = 400; // Rolling window size
+    let tableRowCounter = 0;
+
+    // --- 2. DYNAMIC COORDINATE MATH ---
+    function getCoordinates(index, price) {
+        // Prevent division by zero if we only have 1 data point
+        const indexRatio = dataset.length > 1 ? index / (dataset.length - 1) : 0;
+        const x = paddingX + indexRatio * (svgWidth - paddingX * 2);
+        
+        // Prevent division by zero if maxPrice == minPrice
+        const priceRange = (maxPrice - minPrice) === 0 ? 1 : (maxPrice - minPrice);
+        const normalizedPrice = (price - minPrice) / priceRange;
+        const y = svgHeight - normalizedPrice * (svgHeight - 40) - 20;
+        
+        return { x, y };
+    }
+
+    // --- 3. DYNAMIC Y-AXIS (PRICE SCALE) UPDATE ---
+    function updatePriceScale() {
+        const scaleDiv = document.getElementById('priceScaleColumn');
+        if (dataset.length === 0) return;
+        
+        const range = maxPrice - minPrice;
+        const step = range / 4;
+        
+        scaleDiv.innerHTML = `
+            <span>₹${maxPrice.toFixed(2)}</span>
+            <span>₹${(maxPrice - step).toFixed(2)}</span>
+            <span>₹${(maxPrice - step * 2).toFixed(2)}</span>
+            <span>₹${(minPrice + step).toFixed(2)}</span>
+            <span>₹${minPrice.toFixed(2)}</span>
+        `;
+    }
+
+    // --- 4. RENDER SVG CHART ---
+    function renderChart() {
+        const chartLine = document.getElementById('chartLinePath');
+        const chartArea = document.getElementById('chartAreaPath');
+        const anomalyGroup = document.getElementById('anomalyMarkersGroup');
+
+        if (dataset.length === 0) return;
+
+        let lineD = '';
+        let areaD = '';
+
+        dataset.forEach((d, i) => {
+            if (i === 0) {
+                lineD += `M ${d.x} ${d.y}`;
+                areaD += `M ${d.x} ${svgHeight} L ${d.x} ${d.y}`;
+            } else {
+                const prev = dataset[i - 1];
+                const cpX1 = prev.x + (d.x - prev.x) / 2;
+                const cpX2 = cpX1;
+                lineD += ` C ${cpX1} ${prev.y}, ${cpX2} ${d.y}, ${d.x} ${d.y}`;
+                areaD += ` C ${cpX1} ${prev.y}, ${cpX2} ${d.y}, ${d.x} ${d.y}`;
             }
         });
 
-        // 2. State Management
-        let basePrice = null;
-        const ws = new WebSocket("ws://localhost:8000/ws");
-        const logList = document.getElementById('logList');
-        const logsCard = document.getElementById('logsCard');
+        areaD += ` L ${dataset[dataset.length - 1].x} ${svgHeight} Z`;
+        chartLine.setAttribute('d', lineD);
+        chartArea.setAttribute('d', areaD);
 
-        ws.onopen = () => {
-            document.getElementById('status').innerText = "LIVE MARKET SYNCED";
-            document.getElementById('status').style.color = colorUp;
-        };
-
-        // 3. Process Incoming Data
-        ws.onmessage = function(event) {
-            const data = JSON.parse(event.data);
-
-            // Set the opening/base price on the very first tick
-            if (basePrice === null) {
-                basePrice = data.price;
-                document.getElementById('basePriceLabel').innerText = `Base: ₹${basePrice.toFixed(2)}`;
-            }
-
-            // Determine if we are Green or Red
-            const isUp = data.price >= basePrice;
-            const activeColor = isUp ? colorUp : colorDown;
-
-            // Update Header text color
-            document.getElementById('livePrice').innerText = `₹ ${data.price.toFixed(2)}`;
-            document.getElementById('livePrice').style.color = activeColor;
-
-            // Update Chart Line Color
-            niftyChart.data.datasets[0].borderColor = activeColor;
-
-            // Create the trailing gradient under the line
-            let gradient = ctx.createLinearGradient(0, 0, 0, 450);
-            gradient.addColorStop(0, isUp ? 'rgba(0, 200, 5, 0.15)' : 'rgba(255, 59, 48, 0.15)');
-            gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-            niftyChart.data.datasets[0].backgroundColor = gradient;
-
-            // Add Data to Chart
-            niftyChart.data.labels.push(data.time);
-            niftyChart.data.datasets[0].data.push(data.price);
-
-            // MARK ANOMALIES ON THE GRAPH
-            if (data.alert) {
-                // Large bold black dot with a white halo so it stands out against both green and red lines
-                niftyChart.data.datasets[0].pointBackgroundColor.push('#1a1a1a'); 
-                niftyChart.data.datasets[0].pointBorderColor.push('#ffffff');
-                niftyChart.data.datasets[0].pointRadius.push(6);
-                niftyChart.data.datasets[0].pointBorderWidth.push(3);
-                
-                // ONLY log if it's an anomaly
-                logsCard.style.display = 'block'; // Show the logs panel if hidden
-                const newLog = document.createElement('li');
-                newLog.className = 'log-item';
-                newLog.innerHTML = `
-                    <span>[${data.time}] <span class="bold">ANOMALY TRIGGERED</span></span>
-                    <span style="font-family: monospace; font-weight: 600;">₹${data.price.toFixed(2)} (Conf: ${data.confidence.toFixed(2)})</span>
+        // Draw Anomaly Dots
+        let anomalyHtml = '';
+        dataset.forEach((d, idx) => {
+            if (d.isAnomaly) {
+                anomalyHtml += `
+                    <g class="anomaly-marker cursor-pointer" data-index="${idx}">
+                        <line x1="${d.x}" x2="${d.x}" y1="${d.y + 4}" y2="${svgHeight}" stroke="#10b981" stroke-dasharray="2 3" stroke-width="1" opacity="0.35"/>
+                        <circle cx="${d.x}" cy="${d.y}" r="6.5" fill="#10b981" opacity="0.25"/>
+                        <circle cx="${d.x}" cy="${d.y}" r="3.5" fill="#10b981" stroke="#ffffff" stroke-width="1.5" filter="url(#emeraldGlow)"/>
+                    </g>
                 `;
-                logList.insertBefore(newLog, logList.firstChild);
-                
-            } else {
-                // Invisible dot for normal ticks
-                niftyChart.data.datasets[0].pointBackgroundColor.push('transparent');
-                niftyChart.data.datasets[0].pointBorderColor.push('transparent');
-                niftyChart.data.datasets[0].pointRadius.push(0);
-                niftyChart.data.datasets[0].pointBorderWidth.push(0);
             }
+        });
+        anomalyGroup.innerHTML = anomalyHtml;
+    }
 
-            niftyChart.update();
+    // --- 5. WEBSOCKET LOGIC ---
+    const ws = new WebSocket("ws://localhost:8000/ws");
+    const tbody = document.getElementById('anomalyLogBody');
+
+    ws.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+
+        // Map backend payload to frontend format
+        const newDataPoint = {
+            time: data.time,
+            price: data.price,
+            isAnomaly: data.alert,
+            confidence: data.confidence,
+            type: data.alert ? 'Anomaly' : 'Nominal'
         };
-    </script>
+
+        dataset.push(newDataPoint);
+
+        // Rolling Window Logic: Remove oldest point if array gets too big
+        if (dataset.length > MAX_DATA_POINTS) {
+            dataset.shift();
+            // Shift the mapped indices so clicking the table still highlights the right point
+            anomalyTableIndices = anomalyTableIndices.map(idx => idx - 1);
+        }
+
+        // Auto-Scale Y-Axis (Add 0.1% padding top and bottom so lines don't hit the ceiling)
+        const prices = dataset.map(d => d.price);
+        minPrice = Math.min(...prices) * 0.999;
+        maxPrice = Math.max(...prices) * 1.001;
+
+        // Recalculate physical coordinates for all points based on new bounds
+        dataset.forEach((d, i) => {
+            const coords = getCoordinates(i, d.price);
+            d.x = coords.x;
+            d.y = coords.y;
+        });
+
+        // Update visuals
+        updatePriceScale();
+        renderChart();
+
+        // --- INJECT ANOMALY LOG INTO TABLE ---
+        if (data.alert) {
+            // Track where this anomaly is in the dataset for the click-to-highlight feature
+            const currentDataIndex = dataset.length - 1;
+            anomalyTableIndices.unshift(currentDataIndex); 
+            
+            const row = document.createElement('tr');
+            row.className = "hover:bg-surface-container-low transition-colors duration-150 cursor-pointer border-b border-outline-variant";
+            row.setAttribute("onclick", `highlightChartPoint(${tableRowCounter})`);
+            
+            // Map confidence score to a visual width percentage (cap at 100%)
+            const barWidth = Math.min(data.confidence * 10, 100); 
+            
+            row.innerHTML = `
+                <td class="py-2.5 sm:py-3 px-4 sm:px-6 text-on-surface font-sans font-semibold tabular-nums whitespace-nowrap">${data.time}</td>
+                <td class="py-2.5 sm:py-3 px-4 sm:px-6 text-on-surface tabular-nums whitespace-nowrap">
+                    <span class="font-medium">₹${data.price.toFixed(2)}</span>
+                </td>
+                <td class="py-2.5 sm:py-3 px-4 sm:px-6 whitespace-nowrap">
+                    <div class="flex items-center space-x-2.5 sm:space-x-3">
+                        <div class="w-20 sm:w-28 bg-surface-container-high h-2 rounded-full overflow-hidden">
+                            <div class="bg-secondary h-full rounded-full" style="width: ${barWidth}%;"></div>
+                        </div>
+                        <span class="font-semibold text-secondary text-xs">${data.confidence.toFixed(2)}</span>
+                    </div>
+                </td>
+            `;
+            
+            tbody.insertBefore(row, tbody.firstChild);
+            tableRowCounter++;
+
+            if (tbody.children.length > 50) tbody.removeChild(tbody.lastChild);
+        }
+    };
+
+    // --- 6. INTERACTIVE TOOLTIP HUD LOGIC ---
+    const viewport = document.getElementById('chartViewport');
+    const crosshair = document.getElementById('crosshairLine');
+    const tooltip = document.getElementById('chartTooltip');
+    const hoverDot = document.getElementById('cursorHoverDot');
+    
+    function updateTooltipPosition(index) {
+        if (index < 0 || index >= dataset.length) return;
+        const d = dataset[index];
+        if (!d) return;
+
+        const vpRect = viewport.getBoundingClientRect();
+        const pixelX = (d.x / svgWidth) * vpRect.width;
+        const pixelY = (d.y / 340) * vpRect.height;
+
+        crosshair.style.left = `${pixelX}px`;
+        crosshair.classList.remove('hidden');
+
+        hoverDot.style.left = `${pixelX}px`;
+        hoverDot.style.top = `${pixelY}px`;
+        hoverDot.classList.remove('hidden');
+
+        document.getElementById('tooltipTime').textContent = `${d.time}`;
+        document.getElementById('tooltipPrice').textContent = `₹${d.price.toFixed(2)}`;
+
+        const badge = document.getElementById('tooltipAnomalyBadge');
+        if (d.isAnomaly) {
+            badge.textContent = `Alert (${d.confidence.toFixed(2)})`;
+            badge.className = "px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40";
+        } else {
+            badge.textContent = `Nominal`;
+            badge.className = "px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-semibold bg-slate-800 text-slate-400 border border-slate-700";
+        }
+
+        tooltip.classList.remove('hidden');
+
+        let ttX = pixelX + 14;
+        let ttY = pixelY - 45;
+        const tooltipWidth = vpRect.width < 400 ? 150 : 180;
+        
+        if (ttX + tooltipWidth > vpRect.width - 12) ttX = pixelX - tooltipWidth - 14;
+        if (ttX < 8) ttX = 8;
+        if (ttY < 10) ttY = 10;
+
+        tooltip.style.transform = `translate(${ttX}px, ${ttY}px)`;
+    }
+
+    function handleInteraction(clientX) {
+        if (dataset.length === 0) return;
+        const vpRect = viewport.getBoundingClientRect();
+        const mouseX = clientX - vpRect.left;
+        const svgRelativeX = (mouseX / vpRect.width) * svgWidth;
+
+        let nearestIdx = 0;
+        let nearestDist = Infinity;
+        dataset.forEach((d, idx) => {
+            const dist = Math.abs(d.x - svgRelativeX);
+            if (dist < nearestDist) {
+                nearestDist = dist;
+                nearestIdx = idx;
+            }
+        });
+        updateTooltipPosition(nearestIdx);
+    }
+
+    viewport.addEventListener('mousemove', (e) => handleInteraction(e.clientX));
+    viewport.addEventListener('mouseleave', () => {
+        crosshair.classList.add('hidden');
+        hoverDot.classList.add('hidden');
+        tooltip.classList.add('hidden');
+    });
+
+    // Mobile Touch Support
+    viewport.addEventListener('touchmove', (e) => { if (e.touches.length > 0) handleInteraction(e.touches[0].clientX); }, { passive: true });
+    viewport.addEventListener('touchstart', (e) => { if (e.touches.length > 0) handleInteraction(e.touches[0].clientX); }, { passive: true });
+
+    // Table click integration
+    function highlightChartPoint(tableIndex) {
+        // Because new items are unshifted, table row 0 corresponds to anomalyTableIndices[0]
+        const dsIndex = anomalyTableIndices[tableIndex];
+        if (dsIndex !== undefined && dsIndex >= 0) {
+            updateTooltipPosition(dsIndex);
+            if (window.innerWidth < 640) viewport.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+    window.highlightChartPoint = highlightChartPoint;
+
+    document.getElementById('anomalyMarkersGroup').addEventListener('click', (e) => {
+        const target = e.target.closest('.anomaly-marker');
+        if (target) updateTooltipPosition(parseInt(target.getAttribute('data-index'), 10));
+    });
+</script>
 </body>
+</html>
