@@ -61,10 +61,15 @@ class EventDetector:
         self.confidence = 0
         self.cooldown_period = cooldown_period
         self.ticks_since_last_alert = 9999 
+        self.rest_next_tick = False
 
     def update(self, score):
 
         self.ticks_since_last_alert += 1
+
+        if self.rest_next_tick:
+            self.confidence = 0
+            self.rest_next_tick = False
 
         if score > self.trigger:
             self.confidence += (score - self.trigger)
@@ -78,7 +83,7 @@ class EventDetector:
     
         if self.confidence >= self.notify and self.ticks_since_last_alert >= self.cooldown_period:
             notify = True
-            self.confidence = 0 
+            self.rest_next_tick = True
             self.ticks_since_last_alert = 0 
 
         return notify
