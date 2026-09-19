@@ -53,7 +53,7 @@ class Regression:
 
 
 class EventDetector:
-    def __init__(self, trigger=0.5, notify=2.0, decay=0.85, cooldown_period=60):
+    def __init__(self, trigger=1, notify=4.0, decay=0.85, cooldown_period=45):
         self.trigger = trigger
         self.notify = notify
         self.decay = decay
