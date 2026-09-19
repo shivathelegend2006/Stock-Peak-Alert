@@ -1,8 +1,7 @@
-#Om Namo Venketesaya
+# Om Namo Venketesaya
 
 import asyncio
 import json
-import pandas as pd
 from datetime import datetime
 import yfinance as yf
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -12,77 +11,118 @@ from collections import deque
 
 from detector import EventDetector, Velocity
 
-@asynccontextmanager 
-async def lifespan(app: FastAPI):
-    # This runs on startup
-    task = asyncio.create_task(stream_live_market()) #as soon as conecton made for startup send this function
-    yield # The server runs here
-    # This runs on shutdown
-    task.cancel()
-
-
-app = FastAPI(lifespan=lifespan) #the actual server
-
 
 detector = EventDetector()
-velocity_engine = Velocity(lookback=15) # Looks back 15 ticks to calculate speed
-price_history = deque(maxlen=400) # Stores history for velocity math
-connected_clients = [] #list of connected clinets
+velocity_engine = Velocity(lookback=15)
+price_history = deque(maxlen=400)
+daily_points = deque(maxlen=400)
+daily_anomalies = []
+connected_clients = []
+current_trading_date = None
+last_processed_time = None
 
+def reset_daily_state(new_date):
 
-@app.get("/") #the website sends get request so when the client opens the default url
+    global current_trading_date, detector
+    current_trading_date = new_date
+    price_history.clear()
+    daily_points.clear()
+    daily_anomalies.clear()
+    detector = EventDetector()
+    print(f"[*] Daily state reset for trading session: {new_date}")
+
+def process_point(raw_close_val, timestamp_val):
+
+    price = float(raw_close_val.iloc[0] if hasattr(raw_close_val, 'iloc') else raw_close_val) #extracts the value and gets the point
+    time_str = str(timestamp_val.time())[:8] #converts the timestamp to str
+
+    price_history.append(price)
+    velocity = velocity_engine.calc(price_history) #this passes it onto the velcotiy clauclator
+    alert = detector.update(abs(velocity)) if velocity is not None else False
+
+    payload = {
+        "time": time_str,
+        "price": price,
+        "confidence": round(detector.confidence, 2),
+        "alert": alert
+    }
+
+    daily_points.append(payload)
+    if alert:
+        daily_anomalies.append(payload)
+
+    return payload
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task = asyncio.create_task(stream_live_market()) #run this when the app is on
+    yield
+    task.cancel() #run this when the server is shutting down
+
+app = FastAPI(lifespan=lifespan)
+
+@app.get("/")
 async def get_homepage():
-    return FileResponse("index.html") # return the html page
+    return FileResponse("index.html")
 
-@app.websocket("/ws") #immediatly after the page loads the connecgttio is formed so run this function
+@app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept() # wait for the client side to accept
+    await websocket.accept()
     connected_clients.append(websocket)
     try:
+        if daily_points: #if theres ealier points noted
+            is_weekend = datetime.now().weekday() >= 5
+            await websocket.send_text(json.dumps({
+                "type": "history",
+                "date": current_trading_date.strftime("%A, %B %d, %Y") if current_trading_date else "Loading...",
+                "is_weekend": is_weekend,
+                "points": list(daily_points),
+                "anomalies": list(daily_anomalies)
+            }))
+        
         while True:
-            await websocket.receive_text() #check any mor requests follwing
+            await websocket.receive_text()
+
     except WebSocketDisconnect:
         connected_clients.remove(websocket)
+
 async def stream_live_market():
-    
+    global current_trading_date, last_processed_time
     while True:
+
         try:
-            
             ticker_data = yf.download("^NSEI", period="1d", interval="1m", progress=False)
-            
             if not ticker_data.empty:
-                
-                raw_close = ticker_data['Close'].iloc[-1]
-               
-                latest_price = float(raw_close.iloc[0] if hasattr(raw_close, 'iloc') else raw_close)
-                raw_time = str(ticker_data.index[-1].time())[:8] # just to get in proper format
-                
-                
-                price_history.append(latest_price)
-                current_velocity = velocity_engine.calc(price_history)
-                
-                if current_velocity is not None:
-                    alert_triggered = detector.update(abs(current_velocity))
-                else:
-                    alert_triggered = False
+                last_price_date = ticker_data.index[-1].date()
+                current_candle_time = ticker_data.index[-1]
 
-                
-                payload = {
-                    "time" : raw_time,
-                    "price" : latest_price,
-                    "confidence" : round(detector.confidence, 2),
-                    "alert" : alert_triggered
-                } 
+            if current_trading_date != last_price_date:
+                reset_daily_state(last_price_date)
 
-                json_payload = json.dumps(payload)
-                print(f"[{raw_time}] Live Price: {latest_price} | Alert: {alert_triggered}")
+            if len(daily_points) == 0: #if the server booted mid day to display the existing points in the grpah
+                for idx, row in ticker_data.iterrows():
+                    process_point(row['Close'], idx)
 
-               
-                for client in connected_clients:
-                    await client.send_text(json_payload) 
+                last_processed_time = current_candle_time
+                print(f"[*] Catch-up complete. Anomalies found: {len(daily_anomalies)}")
 
-        except Exception as e:
-            print(f"Error fetching live data: {e}")
-            
-        
+            else:
+                if current_candle_time != last_processed_time:
+                        
+                    latest_point = process_point(
+                        ticker_data['Close'].iloc[-1], 
+                        ticker_data.index[-1]
+                    )
+
+                    payload = json.dumps({"type": "tick", **latest_point})
+                    print(f"[{latest_point['time']}] Live Price: {latest_point['price']} | Alert: {latest_point['alert']}")
+
+                    for client in connected_clients:
+                        await client.send_text(payload)
+        except  Exception as e:
+            print("Erro, ", e)
+
         await asyncio.sleep(60)
+
+
+# run uvicorn server:app --reload in terminal to start up server locally
